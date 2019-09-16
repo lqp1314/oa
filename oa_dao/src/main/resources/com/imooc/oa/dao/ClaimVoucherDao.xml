@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.4//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 配置 报销单 的 mapper 文件 -->
+<mapper namespace="com.imooc.oa.dao.ClaimVoucherDao">
+  <!-- 类型 属性 只能多 不能少  不然就会报错 -->
+  <resultMap type="ClaimVoucher" id="claimVoucher">
+	<id property="id" column="id" javaType="int" />
+	<result property="cause" column="cause" javaType="String" />
+	<result property="createSn" column="create_sn" javaType="String"/>
+	<!-- 传入的类型是日期型  所以类型为 java.util.Date -->
+	<result property="createTime" column="create_time"	javaType="java.util.Date" />
+	<result property="nextDealSn" column="next_deal_sn" javaType="String" />
+	<result property="totalAmount" column="total_amount" javaType="Double" />
+	<result property="status" column="status" javaType="String" /> 
+    
+    <!-- 关联 employee对象  这里是 俩个 虽然类型一样但是 也要写俩个 因为 输出的内容不一样 
+       column=""  表示的是 与  主表关联的 外建 名称
+             创建人 和 处理人  记得将cloumn的名字 区别   
+     -->
+     <!-- 创建人  错误警告  少些一个 r   妈的 傻逼 -->
+    <association property="creater"  column="create_sn" javaType="Employee">
+       <!-- 可以只配置 所需要的 字段 -->
+      <result property="name" column="cname" javaType="String"/>
+      <result property="post" column="cpost" javaType="String"/>
+    </association>
+    <!--处理人-->
+    <association property="dealer" column="next_deal_sn" javaType="Employee">
+       <!-- 可以只配置 所需要的 字段 -->
+       <result property="name" column="dname" javaType="String"/>
+       <result property="post" column="dpost" javaType="String"/>
+    </association>    
+  </resultMap>
+      <!-- 因为没有传入id的值  所以要在执行SQL语句的时候  自动添加 id 的值 
+         useGeneratedKeys="true"  打开自动增长 keyProperty="id"  自动增长的属性 是 id
+	-->
+     <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id" parameterType="ClaimVoucher">
+        insert into claim_voucher(cause,create_sn,create_time,next_deal_sn,total_amount,status)
+        values(#{cause},#{createSn},#{createTime},#{nextDealSn},#{totalAmount},#{status})
+     </insert>
+     
+     <!-- 修改  不修改创建人 主要修改 处理人 等操作 -->
+     <update id="update" parameterType="ClaimVoucher">
+       update claim_voucher set cause=#{cause},next_deal_sn=#{nextDealSn},total_amount=#{totalAmount},status=#{status} where id=#{id}
+     </update> 
+    
+     <!--删除 id  -->
+     <delete id="delete" parameterType="Integer">
+        delete from claim_voucher where id=#{id}
+     </delete>
+     
+     <!-- 查询 通过id 查询 报销单的信息    通过左连接  连接 二个 employee 表  主要名称 一定不能出错  -->
+     <select id="select" resultMap="claimVoucher" parameterType="Integer">
+        select cv.*,ce.name cname,ce.post cpost,d.name dname,d.post dpost
+        from claim_voucher cv
+        left join employee ce on ce.sn=cv.create_sn
+        left join employee d on d.sn = cv.next_deal_sn
+        where cv.id=#{id}
+     </select>
+     
+     <!-- 按时间 倒叙输出  查询 创建人 创建的所有报销单 按时间倒叙排列  -->
+     <select id="selectByCreateSn" resultMap="claimVoucher" parameterType="String">
+       select cv.*,ce.name cname,ce.post cpost,d.name dname,d.post dpost
+        from claim_voucher cv
+        left join employee ce on ce.sn=cv.create_sn
+        left join employee d on d.sn = cv.next_deal_sn
+        where cv.create_sn=#{csn} order by cv.create_time desc
+     </select>
+     
+    <!-- 查询出 具体处理人  该处理的 全部报销单  这里没有加入对 部门的限制  可以 自行添加的    还是按倒叙 -->  
+    <select id="selectByNextDealSn" resultMap="claimVoucher" parameterType="String">
+        select cv.*,ce.name cname,ce.post cpost,d.name dname,d.post dpost
+        from claim_voucher cv
+        left join employee ce on ce.sn=cv.create_sn
+        left join employee d on d.sn = cv.next_deal_sn
+        where cv.next_deal_sn=#{ndsn} order by cv.create_time desc
+    </select>
+     
+     
+</mapper>
+
